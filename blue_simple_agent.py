@@ -16,6 +16,7 @@ game_state = 0
 accumulated_error = 0.
 neutral_zone = False
 section_zone = 1
+zone = 0
 
 # Helper functions
 def set_center(sphere_center):
@@ -69,44 +70,87 @@ def yaw_vel_to_twist(yaw, vel):
     return twist_msg
 
 def get_heading_and_distance():
-    global blue_center, blue_flag, blue_base, red_base, neutral_zone, section_zone
-    if neutral_zone and blue_flag:
-        # Have flag, go home
-        target_x = blue_base.x
-        target_y = blue_base.y
-    elif not blue_flag and (neutral_zone != False):
-        # Don't have flag, go to opponent's base
-        target_x = red_base.x
-        target_y = red_base.y
-    else:
-        # Haven't passed through neutral zone, go there
-        target_x = (0.25 * (max(blue_base.x, red_base.x) 
-                          - min(blue_base.x, red_base.x)) 
-                          + min(blue_base.x, red_base.x))
-        target_y = (0.25 * (max(blue_base.y, red_base.y) 
-                          - min(blue_base.y, red_base.y)) 
-                          + min(blue_base.y, red_base.y))
+    global blue_center, blue_flag, blue_base, red_base, neutral_zone, section_zone, zone
+
+    #Zones
+    # 2   3
+    # 0   1
+    zone = 0
+    if(blue_center.x >= (0.5 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))):
+        zone = zone + 1   
+    if(blue_center.y <= (0.5 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))):
+        zone = zone + 2
+
+
 
     if blue_flag:
-        if(section_zone == 3):
-            target_x = (0.5 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+        if(zone == 3):
+            target_x = (0.45 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
             target_y = (0.25 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
-        if(section_zone == 2):
+        if(zone == 2):
             target_x = (0.25 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
-            target_y = (0.5 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
-        if(section_zone == 1):
+            target_y = (0.55 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+        if(zone == 1):
+            target_x = (0.45 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+            target_y = (0.75 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+        if(zone == 0):
             target_x = blue_base.x
             target_y = blue_base.y
+        distance = np.sqrt((blue_center.x - blue_base.x) ** 2 + (blue_center.y - blue_base.y) ** 2)
+
     else:
-        if(section_zone == 1):
+        if(zone == 0):
             target_x = (0.25 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
-            target_y = (0.5 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
-        if(section_zone == 2):
-            target_x = (0.5 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+            target_y = (0.45 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+        if(zone == 1):
+            target_x = (0.75 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+            target_y = (0.45 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+        if(zone == 2):
+            target_x = (0.55 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
             target_y = (0.25 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
-        if(section_zone == 3):
+        if(zone == 3):
             target_x = red_base.x
             target_y = red_base.y
+        distance = np.sqrt((blue_center.x - red_base.x) ** 2 + (blue_center.y - red_base.y) ** 2)
+
+
+    # if neutral_zone and blue_flag:
+    #     # Have flag, go home
+    #     target_x = blue_base.x
+    #     target_y = blue_base.y
+    # elif not blue_flag and (neutral_zone != False):
+    #     # Don't have flag, go to opponent's base
+    #     target_x = red_base.x
+    #     target_y = red_base.y
+    # else:
+    #     # Haven't passed through neutral zone, go there
+    #     target_x = (0.25 * (max(blue_base.x, red_base.x) 
+    #                       - min(blue_base.x, red_base.x)) 
+    #                       + min(blue_base.x, red_base.x))
+    #     target_y = (0.25 * (max(blue_base.y, red_base.y) 
+    #                       - min(blue_base.y, red_base.y)) 
+    #                       + min(blue_base.y, red_base.y))
+
+    # if blue_flag:
+    #     if(section_zone == 3):
+    #         target_x = (0.5 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+    #         target_y = (0.25 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+    #     if(section_zone == 2):
+    #         target_x = (0.25 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+    #         target_y = (0.5 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+    #     if(section_zone == 1):
+    #         target_x = blue_base.x
+    #         target_y = blue_base.y
+    # else:
+    #     if(section_zone == 1):
+    #         target_x = (0.25 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+    #         target_y = (0.5 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+    #     if(section_zone == 2):
+    #         target_x = (0.5 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+    #         target_y = (0.25 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+    #     if(section_zone == 3):
+    #         target_x = red_base.x
+    #         target_y = red_base.y
 
     # target_x = red_center.x
     # target_y = red_center.y
@@ -114,29 +158,19 @@ def get_heading_and_distance():
     delta_x = target_x - blue_center.x
     delta_y = target_y - blue_center.y
     distance = np.sqrt(delta_x ** 2 + delta_y ** 2)
-    print("[{}, {}, {}, {}]".format(delta_x, delta_y,distance, section_zone))
+    print("[{}, {}, {}, {},{},{},{},{}]".format(delta_x, delta_y,distance, zone,target_x,target_y,blue_center.x,blue_center.y))
 
 
-
-
-
-    if (distance < 50):
-        if(section_zone == 2 and not blue_flag): 
-            section_zone = 3
-        if(section_zone == 1 and not blue_flag): 
-            section_zone = 2
-        if(section_zone == 2 and (blue_flag)): 
-            section_zone = 1
-        if(section_zone == 3 and (blue_flag)): 
-            section_zone = 2
+    # if (distance < 50):
+    #     if(section_zone == 2 and not blue_flag): 
+    #         section_zone = 3
+    #     if(section_zone == 1 and not blue_flag): 
+    #         section_zone = 2
+    #     if(section_zone == 2 and (blue_flag)): 
+    #         section_zone = 1
+    #     if(section_zone == 3 and (blue_flag)): 
+    #         section_zone = 2
         
-
-
-
-
-
-
-
     if not neutral_zone and distance < 50:
         neutral_zone = True
     heading = np.arctan2(delta_y, delta_x)
@@ -153,7 +187,7 @@ def proportional_control():
             accumulated_error = 0
         else:
             accumulated_error += distance
-        speed = distance / 30. + accumulated_error / 10000.
+        speed = distance / 25. + accumulated_error / 10000.
     else:
         speed = 0
         heading = 0
