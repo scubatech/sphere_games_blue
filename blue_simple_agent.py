@@ -63,10 +63,12 @@ def set_red_base(base):
 
 def yaw_vel_to_twist(yaw, vel): 
     twist_msg = Twist() 
-    twist_msg.linear = Vector3(0, 0, 0) 
-    twist_msg.angular.x = np.cos(yaw) * vel 
-    twist_msg.angular.y = np.sin(yaw) * vel 
-    twist_msg.angular.z = 0 
+    twist_msg.linear = Vector3(vel, 0, 0) 
+#    twist_msg.angular.x = np.cos(yaw) * vel 
+#    twist_msg.angular.y = np.sin(yaw) * vel 
+    twist_msg.angular.x = 0 
+    twist_msg.angular.y = 0 
+    twist_msg.angular.z = yaw
     return twist_msg
 
 def get_heading_and_distance():
@@ -83,7 +85,7 @@ def get_heading_and_distance():
 
 
 
-    if blue_flag:
+    if not blue_flag:
         if(zone == 3):
             target_x = (0.45 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
             target_y = (0.25 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
@@ -173,16 +175,26 @@ def get_heading_and_distance():
         
     if not neutral_zone and distance < 50:
         neutral_zone = True
-    heading = np.arctan2(delta_y, delta_x)
+    heading = np.arctan2(-delta_x, delta_y)
+    heading = heading * 180 / 3.1415
+    heading += 180
+    if (heading < 0): 
+	heading += 360 
+    elif (heading > 360):
+        heading -= 360 
     return heading, distance
 
 # Agent function
 def proportional_control():
     global blue_twist, accumulated_error, game_state
-
+    
+    print('Entering proportional control')
+    print('This is blue center: ', blue_center)
     if blue_center != Point():
         heading, distance = get_heading_and_distance()
-        heading = -heading # Switch from camera to world coordinates
+	print('This is heading: ', heading)
+	print('This is distance: ', distance)
+        #heading = -heading # Switch from camera to world coordinates
         if distance < 100:
             accumulated_error = 0
         else:
@@ -192,30 +204,36 @@ def proportional_control():
         speed = 0
         heading = 0
     blue_twist = yaw_vel_to_twist(heading, speed)
+    print('This is blue twist', blue_twist)
     return
 
 # Init function
 def simple_agent():
     global game_over, game_state
+    
+    print('Entering ROS simple agent')
     # Setup ROS message handling
     rospy.init_node('blue_agent', anonymous=True)
 
-    pub_blue_cmd = rospy.Publisher('/blue_sphero/twist_cmd', Twist, queue_size=1)
-    sub_blue_center = rospy.Subscriber('/blue_sphero/center', Point, set_center, queue_size=1)
-    sub_red_center = rospy.Subscriber('/red_sphero/center', Point, set_red_center, queue_size=1)
-    sub_blue_flag = rospy.Subscriber('/blue_sphero/flag', Bool, set_flag, queue_size=1)
-    sub_blue_base = rospy.Subscriber('/blue_sphero/base', Point, set_blue_base, queue_size=1)
-    sub_red_base = rospy.Subscriber('/red_sphero/base', Point, set_red_base, queue_size=1)
-    sub_game_over = rospy.Subscriber('/game_over', Bool, set_game_over, queue_size=1)
+    print('Ros initiated')
+    pub_blue_cmd = rospy.Publisher('/blue_sphero/cmd_vel', Twist, queue_size=1)
+    sub_blue_center = rospy.Subscriber('/arena/blue_sphero/center', Point, set_center, queue_size=1)
+    sub_red_center = rospy.Subscriber('/arena/red_sphero/center', Point, set_red_center, queue_size=1)
+    sub_blue_flag = rospy.Subscriber('/arena/blue_sphero/flag', Bool, set_flag, queue_size=1)
+    sub_blue_base = rospy.Subscriber('/arena/blue_sphero/base', Point, set_blue_base, queue_size=1)
+    sub_red_base = rospy.Subscriber('/arena/red_sphero/base', Point, set_red_base, queue_size=1)
+    #sub_game_over = rospy.Subscriber('/game_over', Bool, set_game_over, queue_size=1)
     sub_game_state = rospy.Subscriber('/arena/game_state', Int16, set_game_state, queue_size=1)
 
+    print('Subscribed and publishing')
     # Agent control loop
     rate = rospy.Rate(2) # Hz
     while not rospy.is_shutdown():
-
+	print('entering while loop')
         if(0):
             pub_blue_cmd.publish(yaw_vel_to_twist(0, 0))
         else:
+            print('Entering else statement')
             proportional_control()
             pub_blue_cmd.publish(blue_twist)
         if game_over != False:
