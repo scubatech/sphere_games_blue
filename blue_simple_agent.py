@@ -206,7 +206,7 @@ def proportional_control():
         speed = 0
         heading = 0
     
-    
+    if(speed<10):speed=10    
     blue_twist = yaw_vel_to_twist(heading, speed)
     print('This is blue twist', blue_twist)
     return
