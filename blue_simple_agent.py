@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import rospy
 from std_msgs.msg import Bool, Int16
@@ -47,7 +48,7 @@ def set_game_state(state):
     global game_over, game_state
     if(state.data == 2):
         game_over = True
-        game_state = 2
+        game_state = state.data
     else:
         game_state = state.data
 
@@ -63,6 +64,7 @@ def set_red_base(base):
 
 def yaw_vel_to_twist(yaw, vel): 
     twist_msg = Twist() 
+    if(vel>250): vel = 250
     twist_msg.linear = Vector3(vel, 0, 0) 
 #    twist_msg.angular.x = np.cos(yaw) * vel 
 #    twist_msg.angular.y = np.sin(yaw) * vel 
@@ -87,32 +89,32 @@ def get_heading_and_distance():
 
     if not blue_flag:
         if(zone == 3):
-            target_x = (0.45 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+            target_x = (0.5 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
             target_y = (0.25 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
         if(zone == 2):
             target_x = (0.25 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
-            target_y = (0.55 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+            target_y = (0.5 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
         if(zone == 1):
-            target_x = (0.45 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+            target_x = (0.5 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
             target_y = (0.75 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
         if(zone == 0):
-            target_x = blue_base.x
-            target_y = blue_base.y
+            target_x = red_base.x
+            target_y = red_base.y
         distance = np.sqrt((blue_center.x - blue_base.x) ** 2 + (blue_center.y - blue_base.y) ** 2)
 
     else:
         if(zone == 0):
             target_x = (0.25 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
-            target_y = (0.45 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+            target_y = (0.5 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
         if(zone == 1):
             target_x = (0.75 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
-            target_y = (0.45 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
+            target_y = (0.5 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
         if(zone == 2):
-            target_x = (0.55 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
+            target_x = (0.5 * (max(blue_base.x, red_base.x) - min(blue_base.x, red_base.x)) + min(blue_base.x, red_base.x))
             target_y = (0.25 * (max(blue_base.y, red_base.y) - min(blue_base.y, red_base.y)) + min(blue_base.y, red_base.y))
         if(zone == 3):
-            target_x = red_base.x
-            target_y = red_base.y
+            target_x = blue_base.x
+            target_y = blue_base.y
         distance = np.sqrt((blue_center.x - red_base.x) ** 2 + (blue_center.y - red_base.y) ** 2)
 
 
@@ -186,7 +188,7 @@ def get_heading_and_distance():
 
 # Agent function
 def proportional_control():
-    global blue_twist, accumulated_error, game_state
+    global blue_twist, accumulated_error, game_state, zone, blue_flag
     
     print('Entering proportional control')
     print('This is blue center: ', blue_center)
@@ -199,10 +201,12 @@ def proportional_control():
             accumulated_error = 0
         else:
             accumulated_error += distance
-        speed = distance / 25. + accumulated_error / 10000.
+        speed = distance / 10. + accumulated_error / 10000.
     else:
         speed = 0
         heading = 0
+    
+    
     blue_twist = yaw_vel_to_twist(heading, speed)
     print('This is blue twist', blue_twist)
     return
@@ -229,7 +233,9 @@ def simple_agent():
     # Agent control loop
     rate = rospy.Rate(2) # Hz
     while not rospy.is_shutdown():
-	print('entering while loop')
+	print('Waiting for Start')
+	while(game_state == 0):time.sleep(0.001)
+	print("Started")
         if(0):
             pub_blue_cmd.publish(yaw_vel_to_twist(0, 0))
         else:
